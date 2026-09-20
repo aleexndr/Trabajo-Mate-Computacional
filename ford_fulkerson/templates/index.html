@@ -1,0 +1,53 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador - Ford Fulkerson</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+    {% csrf_token %}
+    <div id="sidebar">
+        <h2>1. Configuración del Grafo</h2>
+        <div class="control-group">
+            <label for="num-nodos">Cantidad de Nodos [7, 16]:</label>
+            <input type="number" id="num-nodos" min="7" max="16" value="7">
+            <button class="primary" onclick="inicializarNodos()">Generar Nodos</button>
+        </div>
+
+        <h2>2. Creación Manual</h2>
+        <div class="control-group">
+            <div class="row-inputs">
+                <div>
+                    <label>Origen</label>
+                    <input type="number" id="edge-from" placeholder="Ej: 1">
+                </div>
+                <div>
+                    <label>Destino</label>
+                    <input type="number" id="edge-to" placeholder="Ej: 2">
+                </div>
+            </div>
+            <div>
+                <label>Capacidad</label>
+                <input type="number" id="edge-cap" placeholder="Ej: 15">
+            </div>
+            <button class="primary" onclick="agregarArista()">Añadir Arista</button>
+        </div>
+
+        <h2>3. Creación Aleatoria</h2>
+        <div class="control-group">
+            <button class="secondary" onclick="generarGrafoAleatorio()">Generar Grafo Aleatorio</button>
+        </div>
+
+        <button class="action" onclick="enviarAlServidor()">Calcular Flujo Máximo</button>
+    </div>
+
+    <div id="main-content">
+        <div id="mynetwork"></div>
+    </div>
+    <script src="{% static 'js/main.js' %}"></script>
+</body>
+</html>

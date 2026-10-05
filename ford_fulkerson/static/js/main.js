@@ -191,7 +191,7 @@ async function enviarAlServidor() {
         const result = await response.json();
 
         if (response.ok) {
-            alert("¡Cálculo Exitoso!\nEl Flujo Máximo de la red es: ${result.flujo_maximo}");
+            alert(`¡Cálculo Exitoso!\nEl Flujo Máximo de la red es: ${result.flujo_maximo}`);
             console.log("Respuesta del servidor:", result);
         } else {
             alert("Atención: " + result.mensaje);

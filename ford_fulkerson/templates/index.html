@@ -15,6 +15,13 @@
         <div class="control-group">
             <label for="num-nodos">Cantidad de Nodos [7, 16]:</label>
             <input type="number" id="num-nodos" min="7" max="16" value="7">
+            
+            <label>Nodos Fuente (ej: 1, 2) [Máx 2]:</label>
+            <input type="text" id="input-fuentes" value="1">
+
+            <label>Nodos Sumidero (ej: 7, 6) [Máx 2]:</label>
+            <input type="text" id="input-sumideros" value="7">
+            
             <button class="primary" onclick="inicializarNodos()">Generar Nodos</button>
         </div>
 
@@ -46,7 +53,47 @@
     </div>
 
     <div id="main-content">
-        <div id="mynetwork"></div>
+        <!-- CONTENEDOR PRINCIPAL DEL GRAFO Y RESULTADOS -->
+        <div style="display: flex; flex: 1; height: 100vh; overflow: hidden; width: 100%;">
+            
+            <!-- Zona del Grafo (Toma todo el espacio restante) -->
+            <div id="mynetwork" style="flex: 1; height: 100%;"></div>
+
+            <!-- Panel Lateral Derecho (Tabla de Resultados) -->
+            <div id="panel-resultados" style="display: none; width: 400px; height: 100%; padding: 20px; background-color: #f8f9fa; border-left: 2px solid #e0e0e0; overflow-y: auto; box-sizing: border-box; font-family: sans-serif;">
+                
+                <h3 style="margin-top: 0; color: #0288d1; text-align: center; font-size: 18px;">Caminos de Aumento</h3>
+                
+                <div style="display: flex; justify-content: center; gap: 5px; margin-bottom: 15px;">
+                    <button onclick="controlReproductor('prev')" style="padding: 5px 10px; cursor: pointer;">⬅️</button>
+                    <button onclick="controlReproductor('play')" style="padding: 5px 10px; cursor: pointer; background-color: #4caf50; color: white; font-weight: bold; border: none; border-radius: 3px;">▶️ Auto</button>
+                    <button onclick="controlReproductor('next')" style="padding: 5px 10px; cursor: pointer;">➡️</button>
+                    <button onclick="resaltarRuta(-1)" style="padding: 5px 10px; cursor: pointer; background-color: #f44336; color: white; border: none; border-radius: 3px;">Reset</button>
+                </div>
+
+                <button onclick="mostrarCorteMinimo()" style="padding: 5px 10px; cursor: pointer; background-color: #212121; color: white; border: none; border-radius: 3px; font-weight: bold; margin-left: 10px;">✂️ Corte Mínimo</button>
+
+                <table border="1" cellpadding="6" cellspacing="0" style="width: 100%; text-align: center; border-collapse: collapse; font-size: 13px; background-color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                    <thead style="background-color: #0288d1; color: white;">
+                        <tr>
+                            <th style="width: 15%;">#</th>
+                            <th style="width: 60%;">Ruta Encontrada</th>
+                            <th style="width: 25%;">Flujo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-rutas">
+                        <!-- JavaScript llenará esto -->
+                    </tbody>
+                    <tfoot>
+                        <tr style="font-weight: bold; background-color: #e1f5fe;">
+                            <td colspan="2" style="text-align: right; padding-right: 10px;">FLUJO MÁXIMO:</td>
+                            <td id="total-flujo" style="color: #d32f2f; font-size: 15px;">0</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            
+        </div>
     </div>
     <script src="{% static 'js/main.js' %}"></script>
 </body>

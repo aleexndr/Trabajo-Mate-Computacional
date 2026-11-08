@@ -197,7 +197,7 @@ function agregarArista() {
     document.getElementById('edge-cap').value = '';
 }
 
-// Función: Generar grafo aleatorio estructurado (Red de Flujo válida)
+// Función: Generar grafo aleatorio estructurado sin depender del valor numérico (Orden Topológico)
 function generarGrafoAleatorio() {
     const n = parseInt(document.getElementById('num-nodos').value);
     const fuentes = parseNodosInput('input-fuentes');
@@ -215,77 +215,83 @@ function generarGrafoAleatorio() {
     inicializarNodos();
     const aristasGeneradas = [];
 
-    // Función auxiliar para agregar aristas de forma segura
+    // 1. Identificar nodos intermedios y mezclarlos (Shuffle)
+    let intermedios = [];
+    for (let i = 1; i <= n; i++) {
+        if (!fuentes.includes(i) && !sumideros.includes(i)) {
+            intermedios.push(i);
+        }
+    }
+    intermedios.sort(() => Math.random() - 0.5); // Mezclar para mayor aleatoriedad visual
+
+    // 2. CREAR EL ORDEN TOPOLÓGICO: Fuentes -> Intermedios -> Sumideros
+    const ordenTopologico = [...fuentes, ...intermedios, ...sumideros];
+
+    // Función que verifica si un nodo está "antes" que otro en nuestro orden artificial
+    const puedeConectar = (u, v) => {
+        return ordenTopologico.indexOf(u) < ordenTopologico.indexOf(v);
+    };
+
     const agregarArista = (u, v) => {
         if (u === v) return false;
-        if (fuentes.includes(v) || sumideros.includes(u)) return false; // Prohibir retroceder a fuentes o salir de sumideros
-        if (fuentes.includes(u) && sumideros.includes(v)) return false; // Prohibir conexión directa Fuente -> Sumidero
-        if (aristasGeneradas.some(a => a.from === u && a.to === v)) return false; // Evitar duplicados
+        if (!puedeConectar(u, v)) return false; // REGLA DE ORO: Solo avanzar de izquierda a derecha
+        if (fuentes.includes(u) && sumideros.includes(v)) return false; // Bloquear conexión directa
+        if (aristasGeneradas.some(a => a.from === u && a.to === v)) return false; // Sin duplicados
         
         const cap = Math.floor(Math.random() * 25) + 5;
         aristasGeneradas.push({ from: u, to: v, label: cap.toString(), capacidad: cap });
         return true;
     };
 
-    // Identificar nodos intermedios
-    const intermedios = [];
-    for (let i = 1; i <= n; i++) {
-        if (!fuentes.includes(i) && !sumideros.includes(i)) intermedios.push(i);
-    }
-
-    // PASO 1: Garantizar que cada Fuente se conecte al menos a un nodo intermedio aleatorio
+    // PASO 1: Las fuentes envían flujo hacia adelante
     fuentes.forEach(f => {
-        let posibles = intermedios.filter(i => i > f); // Solo hacia adelante para evitar ciclos
-        if (posibles.length > 0) {
-            agregarArista(f, posibles[Math.floor(Math.random() * Math.min(3, posibles.length))]);
-        }
+        let cantidad = Math.floor(Math.random() * Math.min(3, intermedios.length)) + 1;
+        let seleccionados = [...intermedios].sort(() => Math.random() - 0.5).slice(0, cantidad);
+        seleccionados.forEach(dest => agregarArista(f, dest));
     });
 
-    // PASO 2: Garantizar que cada Sumidero reciba de al menos un nodo intermedio aleatorio
+    // PASO 2: Los sumideros reciben flujo de lo que tienen atrás
     sumideros.forEach(s => {
-        let posibles = intermedios.filter(i => i < s);
-        if (posibles.length > 0) {
-            agregarArista(posibles[Math.floor(Math.random() * posibles.length)], s);
-        }
+        let cantidad = Math.floor(Math.random() * Math.min(3, intermedios.length)) + 1;
+        let seleccionados = [...intermedios].sort(() => Math.random() - 0.5).slice(0, cantidad);
+        seleccionados.forEach(orig => agregarArista(orig, s));
     });
 
-    // PASO 3: Construir la "Columna Vertebral" (Ningún nodo intermedio se queda aislado)
+    // PASO 3: Construir la columna vertebral conectando a los intermedios
     for (let i = 0; i < intermedios.length; i++) {
         let actual = intermedios[i];
 
-        // 3.1. Asegurar que el nodo reciba al menos una conexión (Entrada)
+        // Garantizar que reciba flujo (de la fuente o de un intermedio anterior)
         if (!aristasGeneradas.some(a => a.to === actual)) {
-            let origenesPosibles = [...fuentes, ...intermedios.slice(0, i)].filter(nodo => nodo < actual);
-            if (origenesPosibles.length > 0) {
-                let orig = origenesPosibles[Math.floor(Math.random() * origenesPosibles.length)];
-                agregarArista(orig, actual);
-            }
+            let origenesPosibles = [...fuentes, ...intermedios.slice(0, i)];
+            let orig = origenesPosibles[Math.floor(Math.random() * origenesPosibles.length)];
+            agregarArista(orig, actual);
         }
 
-        // 3.2. Asegurar que el nodo envíe al menos una conexión (Salida)
+        // Garantizar que envíe flujo (a un intermedio posterior o al sumidero)
         if (!aristasGeneradas.some(a => a.from === actual)) {
-            let destinosPosibles = [...intermedios.slice(i + 1), ...sumideros].filter(nodo => nodo > actual);
-            if (destinosPosibles.length > 0) {
-                let dest = destinosPosibles[Math.floor(Math.random() * destinosPosibles.length)];
-                agregarArista(actual, dest);
-            }
+            let destinosPosibles = [...intermedios.slice(i + 1), ...sumideros];
+            let dest = destinosPosibles[Math.floor(Math.random() * destinosPosibles.length)];
+            agregarArista(actual, dest);
         }
     }
 
-    // PASO 4: Rellenar con conexiones extra para mayor complejidad (hasta n * 1.5)
+    // PASO 4: Rellenar con conexiones extra para darle complejidad visual a la red
     let intentos = 0;
-    const cantidadAristas = Math.floor(n * 1.5);
-    
-    while (aristasGeneradas.length < cantidadAristas && intentos < 100) {
-        let origen = Math.floor(Math.random() * (n - 1)) + 1;
-        // Obligar a que vaya de un número menor a uno mayor para EVITAR CICLOS
-        let destino = Math.floor(Math.random() * (n - origen)) + origen + 1;
+    const maxAristas = Math.floor(n * 1.6);
+    while (aristasGeneradas.length < maxAristas && intentos < 200) {
+        // Elegimos un nodo origen cualquiera (excepto los sumideros)
+        let u = ordenTopologico[Math.floor(Math.random() * (ordenTopologico.length - sumideros.length))];
+        let uIndex = ordenTopologico.indexOf(u);
         
-        agregarArista(origen, destino);
+        // Elegimos un destino que obligatoriamente esté a su derecha en el arreglo
+        let vIndex = Math.floor(Math.random() * (ordenTopologico.length - uIndex - 1)) + uIndex + 1;
+        let v = ordenTopologico[vIndex];
+        
+        agregarArista(u, v);
         intentos++;
     }
 
-    // 5. Renderizar en el mapa
     edges.add(aristasGeneradas);
 }
 

@@ -2,7 +2,7 @@ from collections import defaultdict
 
 class Graph:
     def __init__(self, graph):
-        self.graph = graph # Grafo residual
+        self.graph = graph
         self.ROW = len(graph)
 
     def BFS(self, s, t, parent):
@@ -25,26 +25,24 @@ class Graph:
     def FordFulkerson(self, source, sink):
         parent = [-1]*(self.ROW)
         max_flow = 0
-        historial_rutas = []  # <--- AQUÍ GUARDAREMOS EL PASO A PASO
+        historial_rutas = []
 
+        # 1. Bucle principal de aumento de caminos
         while self.BFS(source, sink, parent):
             path_flow = float("Inf")
             s = sink
+            camino_nodos = []
             
-            camino_nodos = []  # Para rastrear los nodos de esta iteración
-            
-            # 1. Encontrar el "cuello de botella" y reconstruir la ruta
             while(s != source):
                 camino_nodos.append(s)
-                path_flow = min (path_flow, self.graph[parent[s]][s])
+                path_flow = min(path_flow, self.graph[parent[s]][s])
                 s = parent[s]
                 
             camino_nodos.append(source)
-            camino_nodos.reverse()  # Lo volteamos para que se lea de Inicio a Fin
+            camino_nodos.reverse()
 
             max_flow += path_flow
 
-            # 2. Actualizar la matriz residual
             v = sink
             while(v != source):
                 u = parent[v]
@@ -52,25 +50,23 @@ class Graph:
                 self.graph[v][u] += path_flow
                 v = parent[v]
                 
-            # 3. Guardar el resumen de esta iteración
             historial_rutas.append({
                 'camino': camino_nodos,
                 'flujo': path_flow
             })
 
-            visited = [False] * self.ROW
-            queue = [source]
-            visited[source] = True
+        # 2. Variable visited declarada de forma segura (Siempre se ejecutará)
+        visited = [False] * self.ROW
+        queue = [source]
+        visited[source] = True
 
-            while queue:
-                u = queue.pop(0)
-                for ind, val in enumerate(self.graph[u]):
-                    # Si tiene capacidad residual > 0 y no ha sido visitado
-                    if not visited[ind] and val > 0:
-                        queue.append(ind)
-                        visited[ind] = True
+        while queue:
+            u = queue.pop(0)
+            for ind, val in enumerate(self.graph[u]):
+                if not visited[ind] and val > 0:
+                    queue.append(ind)
+                    visited[ind] = True
 
-        # Ahora devolvemos el flujo máximo Y el historial
         return max_flow, historial_rutas, visited
 
 # Función DFS para garantizar que la red no contenga ciclos
@@ -84,7 +80,7 @@ def detectar_ciclos(matriz):
         pila_recursividad[v] = True
 
         for ind, capacidad in enumerate(matriz[v]):
-            if capacidad > 0: # Existe una arista dirigida
+            if capacidad > 0:
                 if not visitado[ind]:
                     if dfs(ind):
                         return True

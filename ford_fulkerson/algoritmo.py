@@ -5,7 +5,7 @@ class Graph:
         self.graph = graph
         self.ROW = len(graph)
 
-    def BFS(self, s, t, parent):
+    def BFS(self, s, t, parent): #BFS
         visited = [False]*(self.ROW)
         queue = []
         queue.append(s)
@@ -27,7 +27,6 @@ class Graph:
         max_flow = 0
         historial_rutas = []
 
-        # 1. Bucle principal de aumento de caminos
         while self.BFS(source, sink, parent):
             path_flow = float("Inf")
             s = sink
@@ -55,7 +54,6 @@ class Graph:
                 'flujo': path_flow
             })
 
-        # 2. Variable visited declarada de forma segura (Siempre se ejecutará)
         visited = [False] * self.ROW
         queue = [source]
         visited[source] = True
@@ -69,8 +67,8 @@ class Graph:
 
         return max_flow, historial_rutas, visited
 
-# Función DFS para garantizar que la red no contenga ciclos
-def detectar_ciclos(matriz):
+
+def detectar_ciclos(matriz):  #DFS
     n = len(matriz)
     visitado = [False] * n
     pila_recursividad = [False] * n

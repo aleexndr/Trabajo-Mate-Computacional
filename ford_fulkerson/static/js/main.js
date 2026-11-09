@@ -1,5 +1,3 @@
-
-// Variables globales para la red
 let nodosActivos = 0;
 const nodes = new vis.DataSet([]);
 const edges = new vis.DataSet([]);
@@ -9,29 +7,28 @@ let iteracionActual = -1;
 let intervaloReproductor = null;
 let corteMinimoGlobal = [];
 let animacionFlujoInterval = null;
-// Motor de la Flecha Viajera
+
 let animacionRuta = {
     activa: false,
-    nodos: [],     // Guardará la secuencia: ej. [1, 2, 4, 8]
-    pasoActual: 0, // En qué arista va
-    progreso: 0,   // De 0.0 a 1.0 (Porcentaje de avance en la línea actual)
-    reqFrame: null // Para detener la animación
+    nodos: [],     
+    pasoActual: 0, 
+    progreso: 0,   
+    reqFrame: null 
 };
 
-// Configuración visual de vis.js
 const data = { nodes: nodes, edges: edges };
 const options = {
     nodes: {
         shape: 'circle',
-        size: 25, /* Un poco más grandes */
+        size: 25, 
         font: { size: 16, color: '#000', bold: true },
         borderWidth: 2,
-        shadow: { enabled: true, color: 'rgba(0,0,0,0.2)', size: 10, x: 3, y: 3 } /* SOMBRA */
+        shadow: { enabled: true, color: 'rgba(0,0,0,0.2)', size: 10, x: 3, y: 3 } 
     },
     edges: {
         arrows: { to: { enabled: true, scaleFactor: 1 } },
         font: { align: 'top', size: 14, color: '#d32f2f', strokeWidth: 3, strokeColor: '#ffffff' },
-        color: { color: '#848484', hover: '#0288d1' }, /* EFECTO HOVER */
+        color: { color: '#848484', hover: '#0288d1' }, 
         smooth: { type: 'curvedCW', roundness: 0 }
     },
     interaction: { hover: true },
@@ -42,43 +39,36 @@ const options = {
 };
 const network = new vis.Network(container, data, options);
 
-// DIBUJO EN TIEMPO REAL SOBRE EL LIENZO (CANVAS)
 network.on("afterDrawing", function (ctx) {
     if (!animacionRuta.activa || animacionRuta.nodos.length < 2) return;
 
-    // Obtener los dos nodos de la etapa actual
     const fromNode = animacionRuta.nodos[animacionRuta.pasoActual];
     const toNode = animacionRuta.nodos[animacionRuta.pasoActual + 1];
 
-    // Obtener las coordenadas X, Y de esos nodos
     const posiciones = network.getPositions([fromNode, toNode]);
     const p1 = posiciones[fromNode];
     const p2 = posiciones[toNode];
 
     if (!p1 || !p2) return;
 
-    // Matemáticas: Interpolar la posición exacta de la flecha
     const x = p1.x + (p2.x - p1.x) * animacionRuta.progreso;
     const y = p1.y + (p2.y - p1.y) * animacionRuta.progreso;
 
-    // Matemáticas: Calcular el ángulo de rotación de la flecha
     const angulo = Math.atan2(p2.y - p1.y, p2.x - p1.x);
 
-    // DIBUJAR LA FLECHA (Geometría tipo Chevron)
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angulo);
     
     ctx.beginPath();
-    ctx.moveTo(15, 0);   // Punta de la flecha
-    ctx.lineTo(-10, 10); // Esquina inferior
-    ctx.lineTo(-4, 0);   // Hueco trasero aerodinámico
-    ctx.lineTo(-10, -10);// Esquina superior
+    ctx.moveTo(15, 0);   
+    ctx.lineTo(-10, 10); 
+    ctx.lineTo(-4, 0);   
+    ctx.lineTo(-10, -10);
     ctx.closePath();
     
-    // Efecto de neón (Luz de energía fluyendo)
-    ctx.fillStyle = "#ffeb3b"; // Amarillo brillante
-    ctx.shadowColor = "#ff9800"; // Resplandor naranja intenso
+    ctx.fillStyle = "#ffeb3b"; 
+    ctx.shadowColor = "#ff9800"; 
     ctx.shadowBlur = 20;
     ctx.fill();
     
@@ -88,17 +78,14 @@ network.on("afterDrawing", function (ctx) {
 function parseNodosInput(id) {
     const val = document.getElementById(id).value;
     if (!val) return [];
-    // Separa por comas, quita espacios y convierte a números enteros
     return val.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
 }
 
-// Función: Inicializar los nodos
 function inicializarNodos() {
     const n = parseInt(document.getElementById('num-nodos').value);
     const fuentes = parseNodosInput('input-fuentes');
     const sumideros = parseNodosInput('input-sumideros');
     
-    // 1. Validaciones
     if (isNaN(n) || n < 7 || n > 16) {
         Swal.fire({ icon: 'error', title: 'Oops...', text: 'El número de nodos debe estar entre 7 y 16' })
         return;
@@ -112,7 +99,6 @@ function inicializarNodos() {
         return;
     }
     
-    // 2. Validar que existan y no se crucen
     for (let f of fuentes) {
         if (f < 1 || f > n) { Swal.fire({ icon: 'error', title: 'Oops...', text: `El nodo fuente ${f} no existe.` }); return; }
         if (sumideros.includes(f)) { Swal.fire({ icon: 'error', title: 'Oops...', text: `El nodo ${f} no puede ser fuente y sumidero a la vez.` }); return; }
@@ -128,10 +114,9 @@ function inicializarNodos() {
     const newNodes = [];
     const radio = 250;
     
-    // 3. Crear los nodos
     for (let i = 1; i <= nodosActivos; i++) {
         let etiqueta = `N${i}`;
-        let colorFondo = '#e1f5fe'; // Color normal
+        let colorFondo = '#e1f5fe'; 
         
         if (fuentes.includes(i)) {
             etiqueta = `Fuente (${i})`;
@@ -149,9 +134,10 @@ function inicializarNodos() {
         });
     }
     nodes.add(newNodes);
+
+    dibujarFicticios();
 }
 
-// Función: Agregar una arista manualmente
 function agregarArista() {
     if (nodosActivos === 0) {
         Swal.fire({ icon: 'error', title: 'Oops...', text: "Primero debes generar los nodos." });
@@ -182,7 +168,6 @@ function agregarArista() {
         return;
     }
 
-    // Evitar aristas duplicadas
     const aristasExistentes = edges.get({ filter: item => item.from === from && item.to === to });
     if (aristasExistentes.length > 0) {
         Swal.fire({ icon: 'error', title: 'Oops...', text: "Ya existe una conexión directa entre estos dos nodos." });
@@ -191,13 +176,11 @@ function agregarArista() {
 
     edges.add({ from: from, to: to, label: cap.toString(), capacidad: cap });
     
-    // Limpiar inputs
     document.getElementById('edge-from').value = '';
     document.getElementById('edge-to').value = '';
     document.getElementById('edge-cap').value = '';
 }
 
-// Función: Generar grafo aleatorio estructurado sin depender del valor numérico (Orden Topológico)
 function generarGrafoAleatorio() {
     const n = parseInt(document.getElementById('num-nodos').value);
     const fuentes = parseNodosInput('input-fuentes');
@@ -215,60 +198,52 @@ function generarGrafoAleatorio() {
     inicializarNodos();
     const aristasGeneradas = [];
 
-    // 1. Identificar nodos intermedios y mezclarlos (Shuffle)
     let intermedios = [];
     for (let i = 1; i <= n; i++) {
         if (!fuentes.includes(i) && !sumideros.includes(i)) {
             intermedios.push(i);
         }
     }
-    intermedios.sort(() => Math.random() - 0.5); // Mezclar para mayor aleatoriedad visual
+    intermedios.sort(() => Math.random() - 0.5); 
 
-    // 2. CREAR EL ORDEN TOPOLÓGICO: Fuentes -> Intermedios -> Sumideros
     const ordenTopologico = [...fuentes, ...intermedios, ...sumideros];
 
-    // Función que verifica si un nodo está "antes" que otro en nuestro orden artificial
     const puedeConectar = (u, v) => {
         return ordenTopologico.indexOf(u) < ordenTopologico.indexOf(v);
     };
 
     const agregarArista = (u, v) => {
         if (u === v) return false;
-        if (!puedeConectar(u, v)) return false; // REGLA DE ORO: Solo avanzar de izquierda a derecha
-        if (fuentes.includes(u) && sumideros.includes(v)) return false; // Bloquear conexión directa
-        if (aristasGeneradas.some(a => a.from === u && a.to === v)) return false; // Sin duplicados
+        if (!puedeConectar(u, v)) return false; 
+        if (fuentes.includes(u) && sumideros.includes(v)) return false; 
+        if (aristasGeneradas.some(a => a.from === u && a.to === v)) return false; 
         
         const cap = Math.floor(Math.random() * 25) + 5;
         aristasGeneradas.push({ from: u, to: v, label: cap.toString(), capacidad: cap });
         return true;
     };
 
-    // PASO 1: Las fuentes envían flujo hacia adelante
     fuentes.forEach(f => {
         let cantidad = Math.floor(Math.random() * Math.min(3, intermedios.length)) + 1;
         let seleccionados = [...intermedios].sort(() => Math.random() - 0.5).slice(0, cantidad);
         seleccionados.forEach(dest => agregarArista(f, dest));
     });
 
-    // PASO 2: Los sumideros reciben flujo de lo que tienen atrás
     sumideros.forEach(s => {
         let cantidad = Math.floor(Math.random() * Math.min(3, intermedios.length)) + 1;
         let seleccionados = [...intermedios].sort(() => Math.random() - 0.5).slice(0, cantidad);
         seleccionados.forEach(orig => agregarArista(orig, s));
     });
 
-    // PASO 3: Construir la columna vertebral conectando a los intermedios
     for (let i = 0; i < intermedios.length; i++) {
         let actual = intermedios[i];
 
-        // Garantizar que reciba flujo (de la fuente o de un intermedio anterior)
         if (!aristasGeneradas.some(a => a.to === actual)) {
             let origenesPosibles = [...fuentes, ...intermedios.slice(0, i)];
             let orig = origenesPosibles[Math.floor(Math.random() * origenesPosibles.length)];
             agregarArista(orig, actual);
         }
 
-        // Garantizar que envíe flujo (a un intermedio posterior o al sumidero)
         if (!aristasGeneradas.some(a => a.from === actual)) {
             let destinosPosibles = [...intermedios.slice(i + 1), ...sumideros];
             let dest = destinosPosibles[Math.floor(Math.random() * destinosPosibles.length)];
@@ -276,15 +251,11 @@ function generarGrafoAleatorio() {
         }
     }
 
-    // PASO 4: Rellenar con conexiones extra para darle complejidad visual a la red
     let intentos = 0;
     const maxAristas = Math.floor(n * 1.6);
     while (aristasGeneradas.length < maxAristas && intentos < 200) {
-        // Elegimos un nodo origen cualquiera (excepto los sumideros)
         let u = ordenTopologico[Math.floor(Math.random() * (ordenTopologico.length - sumideros.length))];
         let uIndex = ordenTopologico.indexOf(u);
-        
-        // Elegimos un destino que obligatoriamente esté a su derecha en el arreglo
         let vIndex = Math.floor(Math.random() * (ordenTopologico.length - uIndex - 1)) + uIndex + 1;
         let v = ordenTopologico[vIndex];
         
@@ -293,9 +264,10 @@ function generarGrafoAleatorio() {
     }
 
     edges.add(aristasGeneradas);
+
+    dibujarFicticios();
 }
 
-// Función placeholder para la Fase 3
 function enviarAlServidor() {
     if (edges.length === 0) {
         Swal.fire({ icon: 'error', title: 'Oops...', text: "No hay aristas en el grafo para procesar." });
@@ -304,7 +276,6 @@ function enviarAlServidor() {
     Swal.fire({ icon: 'success', title: '¡Cálculo Exitoso!', text: "El grafo está listo. En la siguiente fase conectaremos este botón con el backend de Django." });
 }
 
-// Función estándar para leer el token CSRF de las cookies en Django
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -320,41 +291,42 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// Función asíncrona para enviar los datos a la vista de Python
 async function enviarAlServidor() {
     if (edges.length === 0) {
         Swal.fire({ icon: 'error', title: 'Oops...', text: "No hay aristas en el grafo para procesar." })
         return;
     }
 
-    // Busca esta parte en enviarAlServidor() y reemplázala:
     const numNodos = parseInt(document.getElementById('num-nodos').value);
-    const fuentes = parseNodosInput('input-fuentes');     // Lista de ej: [1, 2]
-    const sumideros = parseNodosInput('input-sumideros'); // Lista de ej: [6, 7]
+    const fuentes = parseNodosInput('input-fuentes');     
+    const sumideros = parseNodosInput('input-sumideros'); 
 
-    const listaAristas = edges.get().map(edge => ({
-        origen: edge.from,
-        destino: edge.to,
-        capacidad: edge.capacidad
-    }));
+    const listaAristas = [];
+    edges.get().forEach(edge => {
+        if (edge.id && !String(edge.id).startsWith('fict-')) {
+            listaAristas.push({
+                origen: edge.from,
+                destino: edge.to,
+                capacidad: edge.capacidad
+            });
+        }
+    });
 
     const payload = {
         nodos: numNodos,
-        fuentes: fuentes,       // Enviamos el arreglo
-        sumideros: sumideros,   // Enviamos el arreglo
+        fuentes: fuentes,       
+        sumideros: sumideros,   
         aristas: listaAristas
     };
 
-    // Obtenemos el token de seguridad
     const csrftoken = getCookie('csrftoken');
 
-    // 2. Ejecutamos la petición POST
     try {
         const response = await fetch('/api/calcular/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken // Enviamos el token en la cabecera
+                'X-CSRFToken': csrftoken 
             },
             body: JSON.stringify(payload)
         });
@@ -365,7 +337,6 @@ async function enviarAlServidor() {
             document.getElementById('panel-resultados').style.display = 'block';
             corteMinimoGlobal = result.corte_minimo;
             
-            // Guardamos el historial para usarlo en el reproductor
             historialRutasGlobal = result.historial;
             iteracionActual = -1;
             
@@ -373,7 +344,6 @@ async function enviarAlServidor() {
             tbody.innerHTML = ''; 
             
             historialRutasGlobal.forEach((item, index) => {
-                // Hacemos que la fila sea clickeable con "cursor: pointer" y llame a resaltarRuta()
                 const fila = `<tr id="fila-${index}" onclick="resaltarRuta(${index})" style="cursor: pointer; transition: 0.3s;">
                     <td>${index + 1}</td>
                     <td>${item.ruta}</td>
@@ -396,10 +366,7 @@ async function enviarAlServidor() {
 }
 
 
-// Función para pintar la ruta en el grafo
-// Función para pintar la ruta en el grafo y actualizar las capacidades residuales
 function resaltarRuta(index) {
-    // 1. Detener TODAS las animaciones anteriores para limpiar el lienzo
     animacionRuta.activa = false;
     if (animacionRuta.reqFrame) cancelAnimationFrame(animacionRuta.reqFrame);
     if (animacionFlujoInterval) {
@@ -407,7 +374,6 @@ function resaltarRuta(index) {
         animacionFlujoInterval = null;
     }
 
-    // 2. Calcular el flujo acumulado hasta la iteración seleccionada
     let flujosAcumulados = {};
     const todosLosEdges = edges.get();
     todosLosEdges.forEach(e => { flujosAcumulados[e.id] = 0; });
@@ -427,11 +393,16 @@ function resaltarRuta(index) {
         }
     }
 
-    // 3. Pintar TODAS las aristas de base (Rojo si satura, Gris si es normal)
-    const actualizacionesEdges = todosLosEdges.map(e => {
+    // 3. Pintar TODAS las aristas de base
+    const actualizacionesEdges = [];
+    todosLosEdges.forEach(e => {
+        // SALTAR aristas ficticias para que conserven su diseño punteado e Infinito (∞)
+        if (String(e.id).startsWith('fict-')) return; 
+
         const flujo = flujosAcumulados[e.id];
         const estaSaturado = flujo === e.capacidad; 
-        return {
+        
+        actualizacionesEdges.push({
             id: e.id,
             color: { 
                 color: estaSaturado ? '#d32f2f' : '#b0bec5', 
@@ -439,9 +410,9 @@ function resaltarRuta(index) {
                 hover: estaSaturado ? '#d32f2f' : '#b0bec5'
             }, 
             width: estaSaturado ? 3 : 1.5,
-            label: index === -1 ? e.capacidad.toString() : `${e.capacidad}/${flujo}`,
+            label: index === -1 ? e.capacidad.toString() : `${e.capacidad}, ${flujo}`,
             shadow: { enabled: false } 
-        };
+        });
     });
     edges.update(actualizacionesEdges);
 
@@ -455,7 +426,6 @@ function resaltarRuta(index) {
         return; 
     }
 
-    // 4. Crear el "Riel de Energía" (Naranja/Morado pastel estático y grueso)
     const iteracionActualData = historialRutasGlobal[index];
     const aristasA_Resaltar = [];
     let rutaNodos = [];
@@ -471,7 +441,6 @@ function resaltarRuta(index) {
             let edgeEncontrado = eDir || eInv;
 
             if (edgeEncontrado) {
-                // Naranja suave para directo, Morado suave para inverso
                 const colorRiel = eDir ? '#ffb74d' : '#ba68c8'; 
                 
                 aristasA_Resaltar.push({
@@ -481,7 +450,7 @@ function resaltarRuta(index) {
                         highlight: colorRiel, 
                         hover: colorRiel 
                     }, 
-                    width: 5.5, // Carril grueso
+                    width: 5.5,
                     shadow: {
                         enabled: true,
                         color: colorRiel,
@@ -494,26 +463,21 @@ function resaltarRuta(index) {
     }
     edges.update(aristasA_Resaltar);
 
-    // 5. INICIAR LA FLECHA VIAJERA (El motor a 60 FPS)
     animacionRuta.nodos = rutaNodos;
     animacionRuta.pasoActual = 0;
     animacionRuta.progreso = 0;
     animacionRuta.activa = true;
     animarFlecha(); 
 
-    // =======================================================
-    // NUEVO PASO: ETIQUETADO MATEMÁTICO DE VÉRTICES (a+, Δ(x))
-    // =======================================================
+
     const todosLosNodos = nodes.get();
     
-    // A. Limpiar las etiquetas de todos los nodos para dejar solo su nombre base
     const actualizacionesNodos = todosLosNodos.map(n => {
-        return { id: n.id, label: n.label.split('\n')[0] }; // Quita las etiquetas de la iteración anterior
+        return { id: n.id, label: n.label.split('\n')[0] };
     });
 
     if (index >= 0 && historialRutasGlobal[index].aristas_reales.length > 0) {
         
-        // B. Calcular el flujo EXACTAMENTE ANTES de esta iteración (para saber la capacidad real)
         let flujosAntes = {};
         todosLosEdges.forEach(e => { flujosAntes[e.id] = 0; });
         
@@ -529,16 +493,13 @@ function resaltarRuta(index) {
             });
         }
 
-        // C. Generar las etiquetas dinámicas para la ruta actual
         let deltaActual = Infinity;
         const rutaAristas = historialRutasGlobal[index].aristas_reales;
         const nodoInicio = rutaAristas[0].from;
 
-        // 1. Etiquetar el nodo Fuente inicial como (-, ∞)
         let indiceInicio = actualizacionesNodos.findIndex(n => n.id === nodoInicio);
         actualizacionesNodos[indiceInicio].label += '\n(-, ∞)';
 
-        // 2. Recorrer cada salto de la ruta para calcular y pegar la etiqueta
         rutaAristas.forEach(arista => {
             let u = arista.from;
             let v = arista.to;
@@ -547,37 +508,28 @@ function resaltarRuta(index) {
             let eInv = edges.get({ filter: item => item.from === v && item.to === u })[0];
             let esAdelante = !!eDir;
             
-            // Si es hacia adelante, la capacidad residual es (Capacidad - Flujo). Si es en reversa, es el Flujo previo.
             let capResidual = esAdelante 
                 ? (eDir.capacidad - (flujosAntes[eDir.id] || 0)) 
                 : (flujosAntes[eInv.id] || 0);
 
-            // Δ(x) es el mínimo entre el cuello de botella que arrastramos y la capacidad de este paso
             deltaActual = Math.min(deltaActual, capResidual);
             
-            // Signo '+' para aristas normales, '-' para flujo en reversa (red residual)
             let signo = esAdelante ? '+' : '-';
             
-            // Pegar la etiqueta debajo del nombre del nodo destino (Ej: N4\n(N2+, 5))
             let indiceV = actualizacionesNodos.findIndex(n => n.id === v);
             actualizacionesNodos[indiceV].label += `\n(N${u}${signo}, ${deltaActual})`;
         });
     }
     
-    // Aplicar los cambios al lienzo de vis.js
     nodes.update(actualizacionesNodos);
-    // =======================================================
 
-    // 6. Resaltar la fila en la tabla
     const filaDOM = document.getElementById(`fila-${index}`);
     filaDOM.style.backgroundColor = '#b3e5fc';
     filaDOM.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 
-// Función para manejar los botones del reproductor
 function controlReproductor(accion) {
-    // Detener reproducción automática si se hace clic manual
     if (accion !== 'auto' && intervaloReproductor) {
         clearInterval(intervaloReproductor);
         intervaloReproductor = null;
@@ -587,7 +539,7 @@ function controlReproductor(accion) {
         if (iteracionActual < historialRutasGlobal.length - 1) {
             resaltarRuta(iteracionActual + 1);
         } else if (accion === 'auto') {
-            clearInterval(intervaloReproductor); // Detener si llegó al final
+            clearInterval(intervaloReproductor); 
         }
     } 
     else if (accion === 'prev') {
@@ -597,9 +549,8 @@ function controlReproductor(accion) {
     } 
     else if (accion === 'play') {
         if (historialRutasGlobal.length === 0) return;
-        if (iteracionActual === historialRutasGlobal.length - 1) resaltarRuta(-1); // Reiniciar si estaba al final
+        if (iteracionActual === historialRutasGlobal.length - 1) resaltarRuta(-1);
         
-        // Ejecutar "next" cada 1.5 segundos
         intervaloReproductor = setInterval(() => {
             controlReproductor('auto');
         }, 1500);
@@ -607,7 +558,6 @@ function controlReproductor(accion) {
 }
 
 
-// Función para visualizar el Teorema del Corte Mínimo
 function mostrarCorteMinimo() {
 
     animacionRuta.activa = false;
@@ -622,29 +572,26 @@ function mostrarCorteMinimo() {
         animacionFlujoInterval = null;
     }
     
-    // 1. Pausar reproductor y adelantar todo hasta el final para que la red esté saturada
     if (intervaloReproductor) {
         clearInterval(intervaloReproductor);
         intervaloReproductor = null;
     }
     resaltarRuta(historialRutasGlobal.length - 1);
     
-    // 2. Pintar el corte mínimo
     const aristasCorte = corteMinimoGlobal.map(arista => {
         let edgeEncontrado = edges.get({ filter: item => item.from === arista.from && item.to === arista.to })[0];
         if (edgeEncontrado) {
             return {
                 id: edgeEncontrado.id,
-                color: { color: '#000000', highlight: '#000000' }, // Negro oscuro
+                color: { color: '#000000', highlight: '#000000' }, 
                 width: 6,
-                dashes: [10, 10] // Línea punteada de corte
+                dashes: [10, 10] 
             };
         }
     }).filter(e => e !== undefined);
     
     edges.update(aristasCorte);
     
-    // 3. Crear el mensaje de validación matemática
     const textoCorte = corteMinimoGlobal.map(c => `(N${c.from} ➔ N${c.to} | Cap: ${c.capacidad})`).join("\n");
     const sumaCapacidades = corteMinimoGlobal.reduce((acc, c) => acc + c.capacidad, 0);
     
@@ -652,22 +599,86 @@ function mostrarCorteMinimo() {
 }
 
 
-// Función que actualiza la posición de la flecha y pide redibujar la pantalla
 function animarFlecha() {
     if (!animacionRuta.activa) return;
 
-    animacionRuta.progreso += 0.03; // Velocidad de la flecha (Auméntalo para que vaya más rápido)
+    animacionRuta.progreso += 0.03; 
 
     if (animacionRuta.progreso >= 1.0) {
         animacionRuta.progreso = 0;
         animacionRuta.pasoActual++;
         
-        // Si llegó al último nodo de la ruta, reinicia el ciclo
         if (animacionRuta.pasoActual >= animacionRuta.nodos.length - 1) {
             animacionRuta.pasoActual = 0; 
         }
     }
     
-    network.redraw(); // Obliga a vis.js a disparar "afterDrawing"
+    network.redraw();
     animacionRuta.reqFrame = requestAnimationFrame(animarFlecha);
+}
+
+
+
+
+// Función para dibujar visualmente la Super-Fuente y Super-Sumidero teóricos
+function dibujarFicticios() {
+    const n = parseInt(document.getElementById('num-nodos').value);
+    const fuentes = parseNodosInput('input-fuentes');
+    const sumideros = parseNodosInput('input-sumideros');
+    
+    // Obtenemos posiciones para ubicarlos a los extremos
+    const posiciones = network.getPositions();
+    let minX = 0, maxX = 0, sumY = 0, count = 0;
+    for (let id in posiciones) {
+        if (posiciones[id].x < minX) minX = posiciones[id].x;
+        if (posiciones[id].x > maxX) maxX = posiciones[id].x;
+        sumY += posiciones[id].y;
+        count++;
+    }
+    const centroY = count > 0 ? sumY / count : 0;
+
+    // 1. Crear Super-Fuente (Si hay más de 1 fuente real)
+    if (fuentes.length > 1 && !nodes.get(0)) {
+        nodes.add({ 
+            id: 0, 
+            label: 'S*\n(Ficticia)', 
+            color: { background: '#eceff1', border: '#90a4ae' },
+            font: { size: 14 },
+            shape: 'circle',
+            x: minX - 150, // Ubicado a la extrema izquierda
+            y: centroY
+        });
+        fuentes.forEach(f => {
+            edges.add({ 
+                id: `fict-src-${f}`, from: 0, to: f, 
+                label: '∞', capacidad: Infinity, 
+                color: { color: '#90a4ae', highlight: '#90a4ae' }, 
+                dashes: [5, 5], width: 2 // Línea punteada teórica
+            });
+        });
+    }
+
+    // 2. Crear Super-Sumidero (Si hay más de 1 sumidero real)
+    if (sumideros.length > 1) {
+        const idSumideroFicticio = n + 1;
+        if (!nodes.get(idSumideroFicticio)) {
+            nodes.add({ 
+                id: idSumideroFicticio, 
+                label: 'T*\n(Ficticia)', 
+                color: { background: '#eceff1', border: '#90a4ae' },
+                font: { size: 14 },
+                shape: 'circle',
+                x: maxX + 150, // Ubicado a la extrema derecha
+                y: centroY
+            });
+            sumideros.forEach(s => {
+                edges.add({ 
+                    id: `fict-sink-${s}`, from: s, to: idSumideroFicticio, 
+                    label: '∞', capacidad: Infinity, 
+                    color: { color: '#90a4ae', highlight: '#90a4ae' }, 
+                    dashes: [5, 5], width: 2
+                });
+            });
+        }
+    }
 }

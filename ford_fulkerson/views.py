@@ -29,9 +29,6 @@ def calcular_flujo(request):
                     'mensaje': 'Se detectó un ciclo en el grafo. Corrige la estructura antes de continuar.'
                 }, status=400)
 
-            # =========================================================
-            # MAGIA TEÓRICA: Super-Fuente y Super-Sumidero
-            # =========================================================
             fuentes = data.get('fuentes', [1])
             sumideros = data.get('sumideros', [nodos])
 
@@ -42,30 +39,24 @@ def calcular_flujo(request):
             super_sumidero = total_nodos - 1
             INFINITO = 999999
             
-            # A. Copiar la red original (desplazada por 1 índice)
             for i in range(nodos):
                 for j in range(nodos):
                     matriz_extendida[i+1][j+1] = matriz_original[i][j]
             
-            # B. Conectar la Super-Fuente a los nodos fuente elegidos
             for f in fuentes:
-                matriz_extendida[super_fuente][f] = INFINITO  # f ya es el índice exacto
+                matriz_extendida[super_fuente][f] = INFINITO 
                 
-            # C. Conectar los nodos sumideros elegidos al Super-Sumidero
             for s in sumideros:
-                matriz_extendida[s][super_sumidero] = INFINITO # s ya es el índice exacto
+                matriz_extendida[s][super_sumidero] = INFINITO 
 
-            # 2. Ejecutar el algoritmo
             g = Graph(copy.deepcopy(matriz_extendida))
             
-            # Recibimos las 2 variables que ahora devuelve tu algoritmo
             flujo_max, historial, nodos_visitados = g.FordFulkerson(super_fuente, super_sumidero)
             
-            # Traducir los números a texto para la tabla de la web
             rutas_limpias = []
             for iteracion in historial:
                 ruta_str = []
-                enlaces_reales = []  # <--- NUEVO: Para guardar las coordenadas de vis.js
+                enlaces_reales = [] 
                 
                 camino = iteracion['camino']
                 for i in range(len(camino)):
@@ -77,7 +68,6 @@ def calcular_flujo(request):
                     else:
                         ruta_str.append(f"N{nodo_idx}")
                     
-                    # Extraer aristas reales (ignorando conexiones fantasma a Inicio/Destino)
                     if i < len(camino) - 1:
                         origen = camino[i]
                         destino = camino[i+1]
@@ -87,18 +77,16 @@ def calcular_flujo(request):
                 rutas_limpias.append({
                     'ruta': " → ".join(ruta_str),
                     'flujo': iteracion['flujo'],
-                    'aristas_reales': enlaces_reales # <--- NUEVO: Lo enviamos al frontend
+                    'aristas_reales': enlaces_reales
                 })
 
             corte_minimo = []
             for i in range(total_nodos):
                 for j in range(total_nodos):
-                    # Aristas originales que van de un nodo S (alcanzable) a un nodo T (inalcanzable)
                     if nodos_visitados[i] and not nodos_visitados[j] and matriz_extendida[i][j] > 0:
-                        # Excluimos las conexiones infinitas ficticias
                         if i != super_fuente and j != super_sumidero:
                             corte_minimo.append({
-                                'from': i,   # Estos índices ya coinciden con tu JS (1 a N)
+                                'from': i,   
                                 'to': j,
                                 'capacidad': matriz_extendida[i][j]
                             })
@@ -108,7 +96,7 @@ def calcular_flujo(request):
                 'mensaje': 'Algoritmo ejecutado correctamente.',
                 'flujo_maximo': flujo_max,
                 'historial': rutas_limpias,
-                'corte_minimo': corte_minimo  # <--- Lo enviamos a JS
+                'corte_minimo': corte_minimo 
             })
 
         except Exception as e:

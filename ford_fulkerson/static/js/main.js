@@ -75,6 +75,19 @@ network.on("afterDrawing", function (ctx) {
     ctx.restore();
 });
 
+document.getElementById('num-nodos').addEventListener('input', function(e) {
+    const n = parseInt(e.target.value);
+    if (!isNaN(n) && n >= 7 && n <= 16) {
+        const maxPermitido = Math.round(n / 3);
+        
+        const lblFuentes = document.getElementById('lbl-fuentes');
+        const lblSumideros = document.getElementById('lbl-sumideros');
+        
+        if (lblFuentes) lblFuentes.innerText = `Nodos Fuente (ej: 1, 2) [Máx ${maxPermitido}]:`;
+        if (lblSumideros) lblSumideros.innerText = `Nodos Sumidero (ej: 7, 6) [Máx ${maxPermitido}]:`;
+    }
+});
+
 function parseNodosInput(id) {
     const val = document.getElementById(id).value;
     if (!val) return [];
@@ -86,6 +99,8 @@ function inicializarNodos() {
     const fuentes = parseNodosInput('input-fuentes');
     const sumideros = parseNodosInput('input-sumideros');
     
+    const maxPermitido = Math.round(n / 3);
+    
     if (isNaN(n) || n < 7 || n > 16) {
         Swal.fire({ icon: 'error', title: 'Oops...', text: 'El número de nodos debe estar entre 7 y 16' })
         return;
@@ -94,8 +109,9 @@ function inicializarNodos() {
         Swal.fire({ icon: 'error', title: 'Oops...', text: 'Debes especificar al menos 1 nodo fuente y 1 nodo sumidero.' })
         return;
     }
-    if (fuentes.length > 2 || sumideros.length > 2) {
-        Swal.fire({ icon: 'error', title: 'Oops...', text: 'Límite superado: Máximo 2 fuentes y 2 sumideros.' })
+    
+    if (fuentes.length > maxPermitido || sumideros.length > maxPermitido) {
+        Swal.fire({ icon: 'error', title: 'Oops...', text: `Límite superado: Para una red de ${n} nodos, puedes definir máximo ${maxPermitido} fuentes y ${maxPermitido} sumideros.` })
         return;
     }
     
@@ -106,6 +122,25 @@ function inicializarNodos() {
     for (let s of sumideros) {
         if (s < 1 || s > n) { Swal.fire({ icon: 'error', title: 'Oops...', text: `El nodo sumidero ${s} no existe.` }); return; }
     }
+
+    animacionRuta.activa = false;
+    if (animacionRuta.reqFrame) cancelAnimationFrame(animacionRuta.reqFrame);
+    if (animacionFlujoInterval) {
+        clearInterval(animacionFlujoInterval);
+        animacionFlujoInterval = null;
+    }
+    
+    historialRutasGlobal = [];
+    iteracionActual = -1;
+    
+    const panelResultados = document.getElementById('panel-resultados');
+    if (panelResultados) panelResultados.style.display = 'none';
+    
+    const tablaRutas = document.getElementById('tabla-rutas');
+    if (tablaRutas) tablaRutas.innerHTML = '';
+    
+    const totalFlujo = document.getElementById('total-flujo');
+    if (totalFlujo) totalFlujo.innerText = '0';
     
     nodosActivos = n;
     nodes.clear();
@@ -186,12 +221,19 @@ function generarGrafoAleatorio() {
     const fuentes = parseNodosInput('input-fuentes');
     const sumideros = parseNodosInput('input-sumideros');
 
+    const maxPermitido = Math.round(n / 3);
+
     if (isNaN(n) || n < 7 || n > 16) {
         Swal.fire({ icon: 'error', title: 'Oops...', text: 'Define una cantidad válida de nodos [7, 16].' });
         return;
     }
-    if (fuentes.length === 0 || sumideros.length === 0 || fuentes.length > 2 || sumideros.length > 2) {
-        Swal.fire({ icon: 'warning', title: 'Revisa los nodos', text: 'Define 1 o 2 fuentes y sumideros.' });
+    
+    if (fuentes.length === 0 || sumideros.length === 0 || fuentes.length > maxPermitido || sumideros.length > maxPermitido) {
+        Swal.fire({ 
+            icon: 'warning', 
+            title: 'Límite excedido', 
+            text: `Para una red de ${n} nodos, puedes definir entre 1 y ${maxPermitido} fuentes/sumideros para mantener el equilibrio.` 
+        });
         return;
     }
 
@@ -268,13 +310,6 @@ function generarGrafoAleatorio() {
     dibujarFicticios();
 }
 
-function enviarAlServidor() {
-    if (edges.length === 0) {
-        Swal.fire({ icon: 'error', title: 'Oops...', text: "No hay aristas en el grafo para procesar." });
-        return;
-    }
-    Swal.fire({ icon: 'success', title: '¡Cálculo Exitoso!', text: "El grafo está listo. En la siguiente fase conectaremos este botón con el backend de Django." });
-}
 
 function getCookie(name) {
     let cookieValue = null;
@@ -300,6 +335,21 @@ async function enviarAlServidor() {
     const numNodos = parseInt(document.getElementById('num-nodos').value);
     const fuentes = parseNodosInput('input-fuentes');     
     const sumideros = parseNodosInput('input-sumideros'); 
+    const maxPermitido = Math.round(numNodos / 3);
+
+    if (isNaN(numNodos) || numNodos < 7 || numNodos > 16) {
+        Swal.fire({ icon: 'error', title: 'Oops...', text: 'Define una cantidad válida de nodos [7, 16].' });
+        return;
+    }
+    
+    if (fuentes.length === 0 || sumideros.length === 0 || fuentes.length > maxPermitido || sumideros.length > maxPermitido) {
+        Swal.fire({ 
+            icon: 'warning', 
+            title: 'Límite excedido', 
+            text: `Para una red de ${numNodos} nodos, puedes definir entre 1 y ${maxPermitido} fuentes/sumideros para mantener el equilibrio.` 
+        });
+        return;
+    }
 
     const listaAristas = [];
     edges.get().forEach(edge => {
@@ -393,15 +443,20 @@ function resaltarRuta(index) {
         }
     }
 
-    // 3. Pintar TODAS las aristas de base
     const actualizacionesEdges = [];
     todosLosEdges.forEach(e => {
-        // SALTAR aristas ficticias para que conserven su diseño punteado e Infinito (∞)
-        if (String(e.id).startsWith('fict-')) return; 
+        if (String(e.id).startsWith('fict-')) {
+            actualizacionesEdges.push({
+                id: e.id,
+                color: { color: '#90a4ae', highlight: '#90a4ae', hover: '#90a4ae' }, 
+                width: 2,
+                shadow: { enabled: false } 
+            });
+            return; 
+        }
 
         const flujo = flujosAcumulados[e.id];
         const estaSaturado = flujo === e.capacidad; 
-        
         actualizacionesEdges.push({
             id: e.id,
             color: { 
@@ -426,58 +481,20 @@ function resaltarRuta(index) {
         return; 
     }
 
-    const iteracionActualData = historialRutasGlobal[index];
-    const aristasA_Resaltar = [];
-    let rutaNodos = [];
-
-    if (iteracionActualData.aristas_reales.length > 0) {
-        rutaNodos.push(iteracionActualData.aristas_reales[0].from);
-        
-        iteracionActualData.aristas_reales.forEach(arista => {
-            rutaNodos.push(arista.to);
-            
-            let eDir = edges.get({ filter: item => item.from === arista.from && item.to === arista.to })[0];
-            let eInv = edges.get({ filter: item => item.from === arista.to && item.to === arista.from })[0];
-            let edgeEncontrado = eDir || eInv;
-
-            if (edgeEncontrado) {
-                const colorRiel = eDir ? '#ffb74d' : '#ba68c8'; 
-                
-                aristasA_Resaltar.push({
-                    id: edgeEncontrado.id,
-                    color: { 
-                        color: colorRiel, 
-                        highlight: colorRiel, 
-                        hover: colorRiel 
-                    }, 
-                    width: 5.5,
-                    shadow: {
-                        enabled: true,
-                        color: colorRiel,
-                        size: 8,
-                        x: 0, y: 0
-                    }
-                });
-            }
-        });
-    }
-    edges.update(aristasA_Resaltar);
-
-    animacionRuta.nodos = rutaNodos;
-    animacionRuta.pasoActual = 0;
-    animacionRuta.progreso = 0;
-    animacionRuta.activa = true;
-    animarFlecha(); 
-
-
     const todosLosNodos = nodes.get();
-    
-    const actualizacionesNodos = todosLosNodos.map(n => {
-        return { id: n.id, label: n.label.split('\n')[0] };
+    const n = parseInt(document.getElementById('num-nodos').value);
+    const idSumideroFicticio = n + 1;
+    const fuentes = parseNodosInput('input-fuentes');
+    const sumideros = parseNodosInput('input-sumideros');
+
+    const actualizacionesNodos = todosLosNodos.map(nodo => {
+        if (nodo.id === 0 || nodo.id === idSumideroFicticio) {
+            return { id: nodo.id, label: nodo.label }; 
+        }
+        return { id: nodo.id, label: nodo.label.split('\n')[0] }; 
     });
 
     if (index >= 0 && historialRutasGlobal[index].aristas_reales.length > 0) {
-        
         let flujosAntes = {};
         todosLosEdges.forEach(e => { flujosAntes[e.id] = 0; });
         
@@ -495,15 +512,14 @@ function resaltarRuta(index) {
 
         let deltaActual = Infinity;
         const rutaAristas = historialRutasGlobal[index].aristas_reales;
-        const nodoInicio = rutaAristas[0].from;
+        const nodoInicio = rutaAristas[0].from; 
 
-        let indiceInicio = actualizacionesNodos.findIndex(n => n.id === nodoInicio);
-        actualizacionesNodos[indiceInicio].label += '\n(-, ∞)';
+        let indiceInicio = actualizacionesNodos.findIndex(nd => nd.id === nodoInicio);
+        if (indiceInicio !== -1) actualizacionesNodos[indiceInicio].label += '\n(-, ∞)';
 
         rutaAristas.forEach(arista => {
             let u = arista.from;
             let v = arista.to;
-            
             let eDir = edges.get({ filter: item => item.from === u && item.to === v })[0];
             let eInv = edges.get({ filter: item => item.from === v && item.to === u })[0];
             let esAdelante = !!eDir;
@@ -513,19 +529,75 @@ function resaltarRuta(index) {
                 : (flujosAntes[eInv.id] || 0);
 
             deltaActual = Math.min(deltaActual, capResidual);
-            
             let signo = esAdelante ? '+' : '-';
             
-            let indiceV = actualizacionesNodos.findIndex(n => n.id === v);
-            actualizacionesNodos[indiceV].label += `\n(N${u}${signo}, ${deltaActual})`;
+            let indiceV = actualizacionesNodos.findIndex(nd => nd.id === v);
+            if (indiceV !== -1) actualizacionesNodos[indiceV].label += `\n(N${u}${signo}, ${deltaActual})`;
         });
     }
-    
     nodes.update(actualizacionesNodos);
 
+    const iteracionActualData = historialRutasGlobal[index];
+    const aristasA_Resaltar = [];
+    let rutaNodos = [];
+
+    if (iteracionActualData.aristas_reales.length > 0) {
+        let primeraArista = iteracionActualData.aristas_reales[0];
+        let ultimaArista = iteracionActualData.aristas_reales[iteracionActualData.aristas_reales.length - 1];
+
+        if (fuentes.length > 1 && nodes.get(0)) {
+            rutaNodos.push(0); 
+            aristasA_Resaltar.push({
+                id: `fict-src-${primeraArista.from}`,
+                color: { color: '#ffb74d', highlight: '#ffb74d', hover: '#ffb74d' },
+                width: 5.5,
+                shadow: { enabled: true, color: '#ffb74d', size: 8, x: 0, y: 0 }
+            });
+        }
+
+        rutaNodos.push(primeraArista.from);
+        
+        iteracionActualData.aristas_reales.forEach(arista => {
+            rutaNodos.push(arista.to);
+            
+            let eDir = edges.get({ filter: item => item.from === arista.from && item.to === arista.to })[0];
+            let eInv = edges.get({ filter: item => item.from === arista.to && item.to === arista.from })[0];
+            let edgeEncontrado = eDir || eInv;
+
+            if (edgeEncontrado) {
+                const colorRiel = eDir ? '#ffb74d' : '#ba68c8'; 
+                aristasA_Resaltar.push({
+                    id: edgeEncontrado.id,
+                    color: { color: colorRiel, highlight: colorRiel, hover: colorRiel }, 
+                    width: 5.5,
+                    shadow: { enabled: true, color: colorRiel, size: 8, x: 0, y: 0 }
+                });
+            }
+        });
+
+        if (sumideros.length > 1 && nodes.get(idSumideroFicticio)) {
+            rutaNodos.push(idSumideroFicticio); 
+            aristasA_Resaltar.push({
+                id: `fict-sink-${ultimaArista.to}`,
+                color: { color: '#ffb74d', highlight: '#ffb74d', hover: '#ffb74d' },
+                width: 5.5,
+                shadow: { enabled: true, color: '#ffb74d', size: 8, x: 0, y: 0 }
+            });
+        }
+    }
+    edges.update(aristasA_Resaltar);
+
+    animacionRuta.nodos = rutaNodos;
+    animacionRuta.pasoActual = 0;
+    animacionRuta.progreso = 0;
+    animacionRuta.activa = true;
+    animarFlecha(); 
+
     const filaDOM = document.getElementById(`fila-${index}`);
-    filaDOM.style.backgroundColor = '#b3e5fc';
-    filaDOM.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (filaDOM) {
+        filaDOM.style.backgroundColor = '#b3e5fc';
+        filaDOM.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 }
 
 
@@ -620,13 +692,11 @@ function animarFlecha() {
 
 
 
-// Función para dibujar visualmente la Super-Fuente y Super-Sumidero teóricos
 function dibujarFicticios() {
     const n = parseInt(document.getElementById('num-nodos').value);
     const fuentes = parseNodosInput('input-fuentes');
     const sumideros = parseNodosInput('input-sumideros');
     
-    // Obtenemos posiciones para ubicarlos a los extremos
     const posiciones = network.getPositions();
     let minX = 0, maxX = 0, sumY = 0, count = 0;
     for (let id in posiciones) {
@@ -637,7 +707,6 @@ function dibujarFicticios() {
     }
     const centroY = count > 0 ? sumY / count : 0;
 
-    // 1. Crear Super-Fuente (Si hay más de 1 fuente real)
     if (fuentes.length > 1 && !nodes.get(0)) {
         nodes.add({ 
             id: 0, 
@@ -645,7 +714,7 @@ function dibujarFicticios() {
             color: { background: '#eceff1', border: '#90a4ae' },
             font: { size: 14 },
             shape: 'circle',
-            x: minX - 150, // Ubicado a la extrema izquierda
+            x: minX - 150,
             y: centroY
         });
         fuentes.forEach(f => {
@@ -653,12 +722,11 @@ function dibujarFicticios() {
                 id: `fict-src-${f}`, from: 0, to: f, 
                 label: '∞', capacidad: Infinity, 
                 color: { color: '#90a4ae', highlight: '#90a4ae' }, 
-                dashes: [5, 5], width: 2 // Línea punteada teórica
+                dashes: [5, 5], width: 2
             });
         });
     }
 
-    // 2. Crear Super-Sumidero (Si hay más de 1 sumidero real)
     if (sumideros.length > 1) {
         const idSumideroFicticio = n + 1;
         if (!nodes.get(idSumideroFicticio)) {
@@ -668,7 +736,7 @@ function dibujarFicticios() {
                 color: { background: '#eceff1', border: '#90a4ae' },
                 font: { size: 14 },
                 shape: 'circle',
-                x: maxX + 150, // Ubicado a la extrema derecha
+                x: maxX + 150,
                 y: centroY
             });
             sumideros.forEach(s => {
